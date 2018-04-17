@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">TravelCare</string>
+    <string name="pass_hints">Password...</string>
+    <string name="email_id">Your Email...</string>
+    <string name="login_logo_dsc">Login Page Logo</string>
+    <string name="login_button">Login To Account</string>
+    <string name="login_reg_btn_text">Need a new Account?</string>
+    <string name="login_button_text">Login to account?</string>
+    <string name="action_account_setting_text">Account Settings</string>
+    <string name="action_logout_text">Logout</string>
+    <string name="reg_button_text">Create new Account</string>
+    <string name="reg_pass_text">Password...</string>
+    <string name="reg_confirm_pass_text">Confirm Password...</string>
+    <string name="setup_name_hint">Your Name...</string>
+    <string name="setup_button_name_text">Save Account Settings</string>
+</resources>

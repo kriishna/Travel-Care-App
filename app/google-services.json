@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "1037616333398",
+    "firebase_url": "https://travelcare23-8fd55.firebaseio.com",
+    "project_id": "travelcare23-8fd55",
+    "storage_bucket": "travelcare23-8fd55.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1037616333398:android:8889758ab83adb7a",
+        "android_client_info": {
+          "package_name": "com.project.minor.travelcare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1037616333398-bedb9cu54kb9b5m214bj3q2ekibtf7tg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.project.minor.travelcare",
+            "certificate_hash": "e3c32884e22656344493f987b1b9a82b8ae29764"
+          }
+        },
+        {
+          "client_id": "1037616333398-offsjbgv9n2auo48h0mdrm8aoia2tfrn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFrEMn0OvS6a_VAhRsJQlZGdlNfK5cYOs"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1037616333398-offsjbgv9n2auo48h0mdrm8aoia2tfrn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
