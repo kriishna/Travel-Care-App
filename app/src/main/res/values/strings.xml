@@ -14,4 +14,7 @@
     <string name="setup_name_hint">Your Name...</string>
     <string name="setup_button_name_text">Save Account Settings</string>
     <string name="title_activity_maps">Map</string>
+    <string name="done">Done</string>
+    <string name="cancel">Cancel</string>
+    <string name="check_point_name_hint">Enter a name for this check point</string>
 </resources>

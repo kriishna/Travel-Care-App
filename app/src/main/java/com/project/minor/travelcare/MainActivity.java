@@ -1,23 +1,33 @@
 package com.project.minor.travelcare;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -42,7 +52,6 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -51,6 +60,10 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
@@ -58,13 +71,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     public static final int REQUEST_LOCATION_CODE = 99;
     final static int REQUEST_LOCATION = 199;
-    private final LatLng mDefaultLocation = new LatLng(20.59, 77.567);
+    private static final int LOCATION_UPDATE_INTERVAL = 15000;
+    private static final int LOCATION_UPDATE_FASTEST_INTERVAL = 10000;
+
+    private final LatLng mDefaultLocation = new LatLng(-33.87365, 151.20689);
     PlaceAutocompleteFragment autocompleteFragment;
     View mapView;
     private FusedLocationProviderClient mFusedLocationProviderClient;
-    private LatLng locChangedCoordinates;
     private Location mLastKnownLocation;
-    private Toolbar mainToolbar;
     private FirebaseAuth mAuth;
     private FirebaseFirestore firebaseFirestore;
     private String current_user_id;
@@ -72,17 +86,95 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Boolean exit = false;
     private GoogleApiClient client;
     private LocationRequest locationRequest;
-    private Location lastLocation;
-    private Marker currentLocationMarker;
-    private Marker searchMarker;
 
+    private ImageView locationPin;
+
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        locationPin = findViewById(R.id.location_pin);
+        locationPin.setOnClickListener(new View.OnClickListener() {
+            @SuppressLint("SetTextI18n")
+            @Override
+            public void onClick(View v) {
+                final LatLng target = mMap.getCameraPosition().target;
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                View dialogView =
+                        LayoutInflater.from(MainActivity.this).inflate(R.layout.dialog_box, null, false);
+
+                Geocoder myLocation = new Geocoder(MainActivity.this, Locale.getDefault());
+                List<Address> myList = null;
+                try {
+                    myList = myLocation.getFromLocation(Double.parseDouble(String.valueOf(target.latitude)), Double.parseDouble(String.valueOf(target.longitude)), 1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                assert myList != null;
+                Address address = myList.get(0);
+                String addressStr = "";
+                addressStr += address.getAddressLine(0);
+                if (address.getAddressLine(1) != null) {
+                    addressStr += ", " + address.getAddressLine(1);
+                }
+                if (address.getAddressLine(2) != null) {
+                    addressStr += ", " + address.getAddressLine(2);
+                }
+                ((TextView) dialogView.findViewById(R.id.place_address)).setText(addressStr);
+                ((TextView) dialogView.findViewById(R.id.checkpoint_lat_tv)).setText("Latitude : " +
+                        String.valueOf(target.latitude));
+                ((TextView) dialogView.findViewById(R.id.checkpoint_long_tv)).setText("Longitude : " +
+                        String.valueOf(target.longitude));
+                final EditText nameEditText = dialogView.findViewById(R.id.checkpoint_name_tv);
+                final AlertDialog alertDialog = builder.setView(dialogView).show();
+                alertDialog.show();
+
+                Button done = alertDialog.findViewById(R.id.dialogbox_done_btn);
+                assert done != null;
+                done.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        String enteredText = nameEditText.getText().toString();
+                        if (enteredText.length() >= 3) {
+                            MarkerOptions markerOptions = new MarkerOptions();
+                            markerOptions.position(target);
+                            markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.flag));
+                            markerOptions.title(target.latitude + " : " + target.longitude);
+                            markerOptions.draggable(true);
+                            mMap.clear();
+                            mMap.addMarker(markerOptions);
+
+                            mMap.animateCamera(CameraUpdateFactory.newLatLng(target));
+                            mMap.setMaxZoomPreference(mMap.getMaxZoomLevel());
+                            alertDialog.dismiss();
+                        } else {
+                            nameEditText.setError("Name should have minimum of 4 characters.");
+                        }
+                    }
+                });
+
+                Button cancel = alertDialog.findViewById(R.id.dialogbox_cancel_btn);
+                assert cancel != null;
+                cancel.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        alertDialog.dismiss();
+                    }
+                });
+            }
+        });
+
         if (savedInstanceState != null) {
             mLastKnownLocation = savedInstanceState.getParcelable("location");
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         }
 
         // Construct a FusedLocationProviderClient.
@@ -96,20 +188,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onPlaceSelected(Place place) {
                 LatLng coordinate;
-                String title;
-                title = (String) place.getName();
                 coordinate = place.getLatLng();
                 CameraUpdate location = CameraUpdateFactory.newLatLngZoom(
-                        coordinate, 15);
+                        coordinate, 14);
 
-                MarkerOptions markerOptions = new MarkerOptions();
-                markerOptions.position(coordinate);
-                markerOptions.title(title);
-                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
-                if (searchMarker != null) {
-                    searchMarker.remove();
-                }
-                searchMarker = mMap.addMarker(markerOptions);
 
                 mMap.animateCamera(location);
             }
@@ -296,9 +378,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             buildGoogleApiClient();
             mMap.setMyLocationEnabled(true);
+            getDeviceLocation();
         }
 
-        getDeviceLocation();
+        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+            @Override
+            public void onMapLongClick(LatLng latLng) {
+                MarkerOptions markerOptions = new MarkerOptions();
+                markerOptions.position(latLng);
+                markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.flag));
+                markerOptions.title(latLng.latitude + " : " + latLng.longitude);
+                markerOptions.draggable(true);
+                mMap.clear();
+                mMap.addMarker(markerOptions);
+
+                // Animating to the touched position
+                mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+                mMap.setMaxZoomPreference(mMap.getMaxZoomLevel());
+            }
+        });
 
     }
 
@@ -317,8 +415,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onConnected(@Nullable Bundle bundle) {
         locationRequest = LocationRequest.create();
 
-        locationRequest.setInterval(10000);
-        locationRequest.setFastestInterval(5000);
+        locationRequest.setInterval(LOCATION_UPDATE_INTERVAL);
+        locationRequest.setFastestInterval(LOCATION_UPDATE_FASTEST_INTERVAL);
         locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             LocationServices.FusedLocationApi.requestLocationUpdates(client, locationRequest, this);
@@ -377,12 +475,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onLocationChanged(Location location) {
 
-
         //Get lat and lng of new location
-        locChangedCoordinates = new LatLng(location.getLatitude(), location.getLongitude());
+        LatLng locChangedCoordinates = new LatLng(location.getLatitude(), location.getLongitude());
 
         //Set properties to the marker ie position, icon, title.
-
         mMap.moveCamera(CameraUpdateFactory.newLatLng(locChangedCoordinates));
         mMap.animateCamera(CameraUpdateFactory.zoomBy(14));
 
