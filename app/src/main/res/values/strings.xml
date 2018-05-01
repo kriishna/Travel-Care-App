@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">TravelCare</string>
-    <string name="pass_hints">Password...</string>
-    <string name="email_id">Your Email...</string>
+    <string name="pass_hints">Password&#8230;</string>
+    <string name="email_id">Your Email&#8230;</string>
     <string name="login_logo_dsc">Login Page Logo</string>
     <string name="login_button">Login To Account</string>
     <string name="login_reg_btn_text">Need a new Account?</string>
@@ -9,12 +9,25 @@
     <string name="action_account_setting_text">Account Settings</string>
     <string name="action_logout_text">Logout</string>
     <string name="reg_button_text">Create new Account</string>
-    <string name="reg_pass_text">Password...</string>
-    <string name="reg_confirm_pass_text">Confirm Password...</string>
-    <string name="setup_name_hint">Your Name...</string>
+    <string name="reg_pass_text">Password&#8230;</string>
+    <string name="reg_confirm_pass_text">Confirm Password&#8230;</string>
+    <string name="setup_name_hint">Your Name&#8230;</string>
     <string name="setup_button_name_text">Save Account Settings</string>
     <string name="title_activity_maps">Map</string>
     <string name="done">Done</string>
     <string name="cancel">Cancel</string>
     <string name="check_point_name_hint">Enter a name for this check point</string>
+    <string name="launch_activity">Launch activity</string>
+    <string name="location_unknown">Location unknown</string>
+    <string name="location_updates_label">Location Updates</string>
+
+    <string name="permission_rationale">Location permission is needed for core functionality</string>
+    <string name="permission_denied_explanation">Permission was denied, but is needed for core
+        functionality.</string>
+    <string name="settings">Settings</string>
+    <string name="ok">OK</string>
+    <string name="request_location_updates">Request location updates</string>
+    <string name="remove_location_updates">Remove</string>
+
+    <string name="location_updated">Location Updated: %1$s</string>
 </resources>
