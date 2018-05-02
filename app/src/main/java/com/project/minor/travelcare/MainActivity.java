@@ -6,12 +6,13 @@ import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,6 +21,7 @@ import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
@@ -68,6 +70,9 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 
@@ -136,6 +141,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapView = mapFragment.getView();
+        mapFragment.getMapAsync(this);
+
         if (savedInstanceState != null) {
             mLastKnownLocation = savedInstanceState.getParcelable("location");
         }
@@ -154,11 +164,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @RequiresApi(api = Build.VERSION_CODES.M)
     public void mapSetup() {
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapView = mapFragment.getView();
-        mapFragment.getMapAsync(this);
-
         ImageView locationPin = findViewById(R.id.location_pin);
         locationPin.setOnClickListener(this);
 
@@ -183,7 +188,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 coordinate = place.getLatLng();
                 CameraUpdate location = CameraUpdateFactory.newLatLngZoom(
                         coordinate, 14);
-
 
                 mMap.animateCamera(location);
             }
@@ -231,6 +235,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (checkPermissions()) {
             bindService(new Intent(this, LocationService.class), mServiceConnection,
                     Context.BIND_AUTO_CREATE);
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+                final Handler handler = new Handler();
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        requestPermissions();
+                    }
+                }, 3000);
+
+            }
         }
 
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -266,9 +282,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onResume() {
         super.onResume();
-
         if (!checkPermissions()) {
-            requestPermissions();
+
+            final Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    requestPermissions();
+                }
+            }, 300);
+
         } else {
             LocalBroadcastManager.getInstance(this).registerReceiver(myReceiver,
                     new IntentFilter(LocationService.ACTION_BROADCAST));
@@ -303,7 +326,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.i("LOG:", "User interaction was cancelled.");
             } else if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
-                    Log.i("LOG:", "Permission granted, updates requested, starting location updates");
+                Snackbar.make(
+                        findViewById(android.R.id.content),
+                        "Permission granted!",
+                        Snackbar.LENGTH_SHORT)
+                        .show();
 
                 bindService(new Intent(this, LocationService.class), mServiceConnection,
                         Context.BIND_AUTO_CREATE);
@@ -314,12 +341,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     mMap.setMyLocationEnabled(true);
                 }
 
-
-            } else {
-                // Permission denied.
-                Toast.makeText(MainActivity.this,"Permission was denied, but is needed for core\n" +
-                        "        functionality.",Toast.LENGTH_LONG);
             }
+
         }
 
     }
@@ -362,14 +385,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-
-
         mMap = googleMap;
 
         mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
             @Override
             public boolean onMyLocationButtonClick() {
-                Toast.makeText(MainActivity.this, "Current Location", Toast.LENGTH_SHORT).show();
+                Snackbar.make(
+                        findViewById(android.R.id.content),
+                        "Current location!",
+                        Snackbar.LENGTH_SHORT)
+                        .show();
                 return false;
             }
         });
@@ -383,7 +408,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 lat = location.getLatitude();
                 lng = location.getLongitude();
                 acc = (int) location.getAccuracy();
-                Toast.makeText(MainActivity.this, "Accuracy: " + acc + " m\n(" + lat + ", " + lng + ")", Toast.LENGTH_LONG).show();
+
+                Geocoder myLocation = new Geocoder(MainActivity.this, Locale.getDefault());
+                List<Address> myList = null;
+                try {
+                    myList = myLocation.getFromLocation(Double.parseDouble(String.valueOf(lat)), Double.parseDouble(String.valueOf(lng)), 1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                assert myList != null;
+                Address address = myList.get(0);
+                String addressStr = "";
+                addressStr += address.getAddressLine(0);
+                if (address.getAddressLine(1) != null) {
+                    addressStr += ", " + address.getAddressLine(1);
+                }
+                if (address.getAddressLine(2) != null) {
+                    addressStr += ", " + address.getAddressLine(2);
+                }
+
+                Snackbar.make(
+                        findViewById(android.R.id.content),
+                        "Accuracy: " + acc + " m    (" + lat + ", " + lng + ")\nAddress: "+ addressStr,
+                        Snackbar.LENGTH_SHORT)
+                        .show();
             }
         });
 
@@ -561,21 +609,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (shouldProvideRationale) {
             Log.i("LOG", "Displaying permission rationale to provide additional context.");
 
-            new AlertDialog.Builder(this)
-                    .setTitle("Location Permission")
-                    .setMessage("Location permission is needed for core functionality")
-                    .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+            showSnackbar(R.string.permission_rationale,
+                    android.R.string.ok, new View.OnClickListener() {
                         @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
+                        public void onClick(View view) {
                             // Request permission
                             ActivityCompat.requestPermissions(MainActivity.this,
                                     new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
                                     REQUEST_PERMISSIONS_REQUEST_CODE);
                         }
-                    })
-                    .create()
-                    .show();
-
+                    });
         } else {
             Log.i("LOG", "Requesting permission");
             // Request permission. It's possible this can be auto answered if device policy
@@ -586,6 +629,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     REQUEST_PERMISSIONS_REQUEST_CODE);
         }
 
+    }
+
+    private void showSnackbar(final int mainTextStringId, final int actionStringId,
+                              View.OnClickListener listener) {
+        Snackbar.make(
+                findViewById(android.R.id.content),
+                getString(mainTextStringId),
+                Snackbar.LENGTH_INDEFINITE)
+                .setAction(getString(actionStringId), listener).show();
     }
 
     @Override
