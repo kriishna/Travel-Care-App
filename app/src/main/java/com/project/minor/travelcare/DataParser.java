@@ -136,6 +136,7 @@ public class DataParser {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        assert jsonArray != null;
         return getPaths(jsonArray);
     }
 

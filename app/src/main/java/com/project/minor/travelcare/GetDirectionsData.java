@@ -16,17 +16,13 @@ public class GetDirectionsData extends AsyncTask<Object, String, String> {
 
     private String duration, distance;
     private GoogleMap mMap;
-    private String url;
     private String googleDirectionsData;
-    private LatLng latLng;
-    private String[] directionsList;
-    private HashMap<String, String> distanceList;
 
     @Override
     protected String doInBackground(Object... objects) {
         mMap = (GoogleMap) objects[0];
-        url = (String) objects[1];
-        latLng = (LatLng) objects[2];
+        String url = (String) objects[1];
+        LatLng latLng = (LatLng) objects[2];
 
         DownloadUrl downloadUrl = new DownloadUrl();
         try {
@@ -41,8 +37,8 @@ public class GetDirectionsData extends AsyncTask<Object, String, String> {
     @Override
     protected void onPostExecute(String s) {
         DataParser parser = new DataParser();
-        directionsList = parser.parseDirections(s);
-        distanceList = parser.parseDistance(s);
+        String[] directionsList = parser.parseDirections(s);
+        HashMap<String, String> distanceList = parser.parseDistance(s);
         duration = distanceList.get("duration");
         distance = distanceList.get("distance");
 
@@ -58,7 +54,7 @@ public class GetDirectionsData extends AsyncTask<Object, String, String> {
         return distance;
     }
 
-    public void setDistance(String distance) {
+    private void setDistance(String distance) {
         this.distance = distance;
     }
 
@@ -66,15 +62,14 @@ public class GetDirectionsData extends AsyncTask<Object, String, String> {
         return duration;
     }
 
-    public void setDuration(String duration) {
+    private void setDuration(String duration) {
         this.duration = duration;
     }
 
 
     // In Google Maps, the latitude and longitude coordinates that define
     // a polyline or polygon are stored as an encoded string
-    public void displayDirection(String[] directionsList) {
-        int count = directionsList.length;
+    private void displayDirection(String[] directionsList) {
         for (String aDirectionsList : directionsList) {
             PolylineOptions options = new PolylineOptions();
             options.color(Color.GRAY);

@@ -17,7 +17,7 @@
     <string name="done">Done</string>
     <string name="cancel">Cancel</string>
     <string name="check_point_name_hint">Enter a name for this check point</string>
-    <string name="launch_activity">Launch activity</string>
+    <string name="launch_activity">Start New </string>
     <string name="location_unknown">Location unknown</string>
     <string name="location_updates_label">Location Updates</string>
 
@@ -31,4 +31,15 @@
 
     <string name="location_updated">Location Updated: %1$s</string>
     <string name="pin">pin</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nimesh">Nimesh</string>
+    <string name="nimesh_gmail_com">nimesh@gmail.com</string>
+    <string name="enter_fuel">Enter Fuel</string>
+    <string name="enter_mileage">Enter Mileage</string>
+    <string name="save">save</string>
+    <string name="logout">logout</string>
+    <string name="account_setting">Account Setting</string>
+    <string name="profile_image">profile image</string>
 </resources>

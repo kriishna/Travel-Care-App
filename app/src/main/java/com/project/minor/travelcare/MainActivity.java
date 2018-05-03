@@ -11,6 +11,7 @@ import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -21,13 +22,18 @@ import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
+import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -79,7 +85,8 @@ import java.util.Objects;
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        com.google.android.gms.location.LocationListener, View.OnClickListener {
+        com.google.android.gms.location.LocationListener, View.OnClickListener,
+        NavigationView.OnNavigationItemSelectedListener {
 
     private static final int LOCATION_UPDATE_INTERVAL = 15000;
     private static final int LOCATION_UPDATE_FASTEST_INTERVAL = 10000;
@@ -94,7 +101,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
      * Code used in requesting runtime permissions.
      */
     private static final int REQUEST_PERMISSIONS_REQUEST_CODE = 34;
-    public String dist, dur;
     PlaceAutocompleteFragment autocompleteFragment;
     View mapView;
     //Directions
@@ -116,6 +122,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     // Tracks the bound state of the service.
     private boolean mBound = false;
     // Monitors the state of the connection to the service.
+
+    //NavBar
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
         // Called when a connection  to the Service has been established, with the
         // IBinder of the communication channel to the Service.
@@ -133,16 +141,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
     };
+    private EditText mileage;
+    private EditText fuel;
+    private Double possibleDistance;
+    private String milOfVehicle;
+    private String fuelAmt;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_home);
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapView = mapFragment.getView();
+
+
         mapFragment.getMapAsync(this);
 
         if (savedInstanceState != null) {
@@ -151,6 +166,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         mapSetup();
         firebaseSetup();
+        setNavDraw();
+    }
+
+    private void setNavDraw() {
+
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawer, null, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawer.addDrawerListener(toggle);
+        toggle.syncState();
+
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        View view = navigationView.getHeaderView(0);
+        mileage = view.findViewById(R.id.mileage);
+        fuel = view.findViewById(R.id.fuel);
+
+        navigationView.setNavigationItemSelectedListener(this);
+
+
     }
 
     public void firebaseSetup() {
@@ -162,6 +196,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @TargetApi(Build.VERSION_CODES.O)
     @RequiresApi(api = Build.VERSION_CODES.M)
     public void mapSetup() {
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         ImageView locationPin = findViewById(R.id.location_pin);
         locationPin.setOnClickListener(this);
@@ -179,6 +214,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Retrieve the PlaceAutocompleteFragment.
         autocompleteFragment = (PlaceAutocompleteFragment)
                 getFragmentManager().findFragmentById(R.id.place_autocomplete_fragment);
+        EditText etPlace = Objects.requireNonNull(autocompleteFragment.getView()).findViewById(R.id.place_autocomplete_search_input);
+        etPlace.setTextColor(Color.parseColor("#ffffff"));
 
         autocompleteFragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
@@ -351,35 +388,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Intent intent = new Intent(MainActivity.this, LoginActivity.class);
         startActivity(intent);
         finish();
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main_menu, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.action_logout_button:
-                logout();
-                return true;
-
-            case R.id.action_setting_button:
-                Intent settingIntent = new Intent(MainActivity.this, SetupActivity.class);
-                startActivity(settingIntent);
-                return true;
-
-            default:
-                return false;
-        }
-
-    }
-
-    private void logout() {
-        mAuth.signOut();
-        sendToLoginPage();
     }
 
     @Override
@@ -668,97 +676,109 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (v.getId() == R.id.location_pin) {
 
-            final LatLng target = mMap.getCameraPosition().target;
-            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-            @SuppressLint("InflateParams") View dialogView =
-                    LayoutInflater.from(MainActivity.this).inflate(R.layout.dialog_box, null, false);
+            if (!TextUtils.isEmpty(mileage.getText().toString()) && !TextUtils.isEmpty(fuel.getText().toString())) {
 
-            ((TextView) dialogView.findViewById(R.id.place_address)).setText("Coordinate");
-            ((TextView) dialogView.findViewById(R.id.checkpoint_lat_tv)).setText("Latitude : " +
-                    String.valueOf(target.latitude));
-            ((TextView) dialogView.findViewById(R.id.checkpoint_long_tv)).setText("Longitude : " +
-                    String.valueOf(target.longitude));
+                final LatLng target = mMap.getCameraPosition().target;
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                @SuppressLint("InflateParams") View dialogView =
+                        LayoutInflater.from(MainActivity.this).inflate(R.layout.dialog_box, null, false);
 
-            end_latitude = target.latitude;
-            end_longitude = target.longitude;
+                ((TextView) dialogView.findViewById(R.id.place_address)).setText("Coordinate");
+                ((TextView) dialogView.findViewById(R.id.checkpoint_lat_tv)).setText("Latitude : " +
+                        String.valueOf(target.latitude));
+                ((TextView) dialogView.findViewById(R.id.checkpoint_long_tv)).setText("Longitude : " +
+                        String.valueOf(target.longitude));
 
-            final EditText nameEditText = dialogView.findViewById(R.id.checkpoint_name_tv);
-            final AlertDialog alertDialog = builder.setView(dialogView).show();
-            alertDialog.show();
+                end_latitude = target.latitude;
+                end_longitude = target.longitude;
 
-            Button done = alertDialog.findViewById(R.id.dialogbox_done_btn);
-            assert done != null;
-            done.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
+                final EditText nameEditText = dialogView.findViewById(R.id.checkpoint_name_tv);
+                final AlertDialog alertDialog = builder.setView(dialogView).show();
+                alertDialog.show();
 
-                    Object dataTransfer[];
-                    String enteredText = nameEditText.getText().toString();
+                Button done = alertDialog.findViewById(R.id.dialogbox_done_btn);
+                assert done != null;
+                done.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
 
-                    if (enteredText.length() >= 3) {
+                        Object dataTransfer[];
+                        String enteredText = nameEditText.getText().toString();
 
-                        MarkerOptions markerOptions = new MarkerOptions();
-                        markerOptions.position(target);
-                        markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.flag));
-                        markerOptions.title(target.latitude + " : " + target.longitude);
-                        markerOptions.draggable(true);
-                        mMap.clear();
-                        mMap.addMarker(markerOptions);
+                        if (enteredText.length() >= 3) {
 
-                        if (!checkPermissions()) {
-                            requestPermissions();
-                        } else {
-                            mService.requestLocationUpdates();
-                        }
+                            MarkerOptions markerOptions = new MarkerOptions();
+                            markerOptions.position(target);
+                            markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.flag));
+                            markerOptions.title(target.latitude + " : " + target.longitude);
+                            markerOptions.draggable(true);
+                            mMap.clear();
+                            mMap.addMarker(markerOptions);
 
-                        mMap.animateCamera(CameraUpdateFactory.newLatLng(target));
-                        mMap.setMaxZoomPreference(mMap.getMaxZoomLevel());
-
-                        dataTransfer = new Object[3];
-                        String url = getDirectionsUrl();
-                        final GetDirectionsData getDirectionsData = new GetDirectionsData();
-                        dataTransfer[0] = mMap;
-                        dataTransfer[1] = url;
-                        dataTransfer[2] = new LatLng(end_latitude, end_longitude);
-                        getDirectionsData.execute(dataTransfer);
-
-                        alertDialog.dismiss();
-                        final Handler handler = new Handler();
-                        handler.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                final Snackbar snackbar = Snackbar.make(
-                                        findViewById(android.R.id.content), "Distance: " + getDirectionsData.getDistance()
-                                                + "\nDuration: " + getDirectionsData.getDuration(),
-                                        Snackbar.LENGTH_INDEFINITE);
-                                snackbar.setAction("Dismiss", new View.OnClickListener() {
-                                    @Override
-                                    public void onClick(View v) {
-                                        snackbar.dismiss();
-                                    }
-                                });
-                                snackbar.show();
-
+                            if (!checkPermissions()) {
+                                requestPermissions();
+                            } else {
+                                mService.requestLocationUpdates();
                             }
-                        }, 3000);
+
+                            mMap.animateCamera(CameraUpdateFactory.newLatLng(target));
+                            mMap.setMaxZoomPreference(mMap.getMaxZoomLevel());
+
+                            dataTransfer = new Object[3];
+                            String url = getDirectionsUrl();
+                            final GetDirectionsData getDirectionsData = new GetDirectionsData();
+                            dataTransfer[0] = mMap;
+                            dataTransfer[1] = url;
+                            dataTransfer[2] = new LatLng(end_latitude, end_longitude);
+                            getDirectionsData.execute(dataTransfer);
+
+                            alertDialog.dismiss();
+                            final Handler handler = new Handler();
+                            handler.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    final Snackbar snackbar = Snackbar.make(
+                                            findViewById(android.R.id.content), "Distance: " + getDirectionsData.getDistance()
+                                                    + "\nDuration: " + getDirectionsData.getDuration(),
+                                            Snackbar.LENGTH_INDEFINITE);
+                                    snackbar.setAction("Dismiss", new View.OnClickListener() {
+                                        @Override
+                                        public void onClick(View v) {
+                                            snackbar.dismiss();
+                                        }
+                                    });
+                                    snackbar.show();
+
+                                }
+                            }, 3000);
 
 
-                    } else {
+                        } else {
 
-                        nameEditText.setError("Name should have minimum of 4 characters.");
+                            nameEditText.setError("Name should have minimum of 4 characters.");
 
+                        }
                     }
-                }
-            });
+                });
 
-            Button cancel = alertDialog.findViewById(R.id.dialogbox_cancel_btn);
-            assert cancel != null;
-            cancel.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    alertDialog.dismiss();
-                }
-            });
+                Button cancel = alertDialog.findViewById(R.id.dialogbox_cancel_btn);
+                assert cancel != null;
+                cancel.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        alertDialog.dismiss();
+                    }
+                });
+            } else {
+                Snackbar.make(
+                        findViewById(android.R.id.content),
+                        "Enter mileage and fuel!",
+                        Snackbar.LENGTH_SHORT)
+                        .show();
+
+                DrawerLayout drawer = findViewById(R.id.drawer_layout);
+                drawer.openDrawer(Gravity.START);
+            }
         }
     }
 
@@ -767,6 +787,64 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return "https://maps.googleapis.com/maps/api/directions/json?" + "origin=" + latitude + "," + longitude +
                 "&destination=" + end_latitude + "," + end_longitude +
                 "&key=" + "AIzaSyCi-cOwNdjflGxFXwbLIO3vhgp6kZn1KQ8";
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        // Handle navigation view item clicks here.
+        int id = item.getItemId();
+        DrawerLayout drawer;
+
+        switch (id) {
+            case R.id.logout:
+
+                mAuth.signOut();
+
+                sendToLoginPage();
+                drawer = findViewById(R.id.drawer_layout);
+                drawer.closeDrawers();
+
+                return false;
+
+            case R.id.save:
+                if (!TextUtils.isEmpty(mileage.getText().toString()) && !TextUtils.isEmpty(fuel.getText().toString())) {
+                    milOfVehicle = mileage.getText().toString();
+                    fuelAmt = fuel.getText().toString();
+
+                    possibleDistance = Double.valueOf(milOfVehicle) * Double.valueOf(fuelAmt);
+                    Log.v("Dist", String.valueOf(possibleDistance));
+                    Snackbar.make(
+                            findViewById(android.R.id.content),
+                            "Possible Distance: " + possibleDistance + " KM\nSettings saved !",
+                            Snackbar.LENGTH_SHORT)
+                            .show();
+
+                    drawer = findViewById(R.id.drawer_layout);
+                    drawer.closeDrawers();
+
+                } else {
+                    Snackbar.make(
+                            findViewById(android.R.id.content),
+                            "Enter mileage and fuel!",
+                            Snackbar.LENGTH_SHORT)
+                            .show();
+                }
+                return false;
+            case R.id.acc_setting:
+                Intent settingIntent = new Intent(MainActivity.this, SetupActivity.class);
+                startActivity(settingIntent);
+                drawer = findViewById(R.id.drawer_layout);
+                drawer.closeDrawers();
+                return false;
+
+            default:
+                return false;
+        }
+    }
+
+    @Override
+    public void onPointerCaptureChanged(boolean hasCapture) {
+
     }
 
 
