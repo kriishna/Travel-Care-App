@@ -94,9 +94,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
      * Code used in requesting runtime permissions.
      */
     private static final int REQUEST_PERMISSIONS_REQUEST_CODE = 34;
-
+    public String dist, dur;
     PlaceAutocompleteFragment autocompleteFragment;
     View mapView;
+    //Directions
+    double latitude, longitude;
+    double end_latitude, end_longitude;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private Location mLastKnownLocation;
     private FirebaseAuth mAuth;
@@ -105,17 +108,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Boolean exit = false;
     private GoogleApiClient client;
     private LocationRequest locationRequest;
-
     //Service
     // The BroadcastReceiver used to listen from broadcasts from the service.
     private MyReceiver myReceiver;
-
     // A reference to the service used to get location updates.
     private LocationService mService = null;
-
     // Tracks the bound state of the service.
     private boolean mBound = false;
-
     // Monitors the state of the connection to the service.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
         // Called when a connection  to the Service has been established, with the
@@ -429,7 +428,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 Snackbar.make(
                         findViewById(android.R.id.content),
-                        "Accuracy: " + acc + " m    (" + lat + ", " + lng + ")\nAddress: "+ addressStr,
+                        "Accuracy: " + acc + " m    (" + lat + ", " + lng + ")\nAddress: " + addressStr,
                         Snackbar.LENGTH_SHORT)
                         .show();
             }
@@ -569,6 +568,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onLocationChanged(Location location) {
 
+        latitude = location.getLatitude();
+        longitude = location.getLongitude();
+
         //Get lat and lng of new location
         LatLng locChangedCoordinates = new LatLng(location.getLatitude(), location.getLongitude());
 
@@ -646,8 +648,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (exit) {
             finish(); // finish activity
         } else {
-            Toast.makeText(this, "Press Back again to Exit.",
-                    Toast.LENGTH_SHORT).show();
+            Snackbar.make(
+                    findViewById(android.R.id.content), "Press Back again to Exit.",
+                    Snackbar.LENGTH_SHORT)
+                    .show();
             exit = true;
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -675,6 +679,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             ((TextView) dialogView.findViewById(R.id.checkpoint_long_tv)).setText("Longitude : " +
                     String.valueOf(target.longitude));
 
+            end_latitude = target.latitude;
+            end_longitude = target.longitude;
+
             final EditText nameEditText = dialogView.findViewById(R.id.checkpoint_name_tv);
             final AlertDialog alertDialog = builder.setView(dialogView).show();
             alertDialog.show();
@@ -684,8 +691,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             done.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+
+                    Object dataTransfer[];
                     String enteredText = nameEditText.getText().toString();
+
                     if (enteredText.length() >= 3) {
+
                         MarkerOptions markerOptions = new MarkerOptions();
                         markerOptions.position(target);
                         markerOptions.icon(BitmapDescriptorFactory.fromResource(R.drawable.flag));
@@ -693,17 +704,49 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         markerOptions.draggable(true);
                         mMap.clear();
                         mMap.addMarker(markerOptions);
+
                         if (!checkPermissions()) {
                             requestPermissions();
                         } else {
                             mService.requestLocationUpdates();
                         }
+
                         mMap.animateCamera(CameraUpdateFactory.newLatLng(target));
                         mMap.setMaxZoomPreference(mMap.getMaxZoomLevel());
 
+                        dataTransfer = new Object[3];
+                        String url = getDirectionsUrl();
+                        final GetDirectionsData getDirectionsData = new GetDirectionsData();
+                        dataTransfer[0] = mMap;
+                        dataTransfer[1] = url;
+                        dataTransfer[2] = new LatLng(end_latitude, end_longitude);
+                        getDirectionsData.execute(dataTransfer);
+
                         alertDialog.dismiss();
+                        final Handler handler = new Handler();
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                final Snackbar snackbar = Snackbar.make(
+                                        findViewById(android.R.id.content), "Distance: " + getDirectionsData.getDistance()
+                                                + "\nDuration: " + getDirectionsData.getDuration(),
+                                        Snackbar.LENGTH_INDEFINITE);
+                                snackbar.setAction("Dismiss", new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View v) {
+                                        snackbar.dismiss();
+                                    }
+                                });
+                                snackbar.show();
+
+                            }
+                        }, 3000);
+
+
                     } else {
+
                         nameEditText.setError("Name should have minimum of 4 characters.");
+
                     }
                 }
             });
@@ -718,6 +761,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
         }
     }
+
+    private String getDirectionsUrl() {
+
+        return "https://maps.googleapis.com/maps/api/directions/json?" + "origin=" + latitude + "," + longitude +
+                "&destination=" + end_latitude + "," + end_longitude +
+                "&key=" + "AIzaSyCi-cOwNdjflGxFXwbLIO3vhgp6kZn1KQ8";
+    }
+
 
     /**
      * +     * Receiver for broadcasts sent by LocationService.

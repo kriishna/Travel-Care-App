@@ -25,16 +25,20 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".RegisterActivity">
+        <activity android:name=".RegisterActivity"
+                  android:screenOrientation="portrait">
         </activity>
 
-        <activity android:name=".MainActivity">
+        <activity android:name=".MainActivity"
+                  android:screenOrientation="portrait">
         </activity>
 
-        <activity android:name=".SetupActivity">
+        <activity android:name=".SetupActivity"
+                  android:screenOrientation="portrait">
         </activity>
 
         <activity
+            android:screenOrientation="portrait"
             android:name="com.theartofdev.edmodo.cropper.CropImageActivity"
             android:theme="@style/Base.Theme.AppCompat"/>
 
